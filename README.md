@@ -6,10 +6,13 @@ All require the following packages: matplotlib, simpy and numpy.
 ## Usage
 All simulators operate mostly in the same way, and take the same parameters. The main difference is that loraDirMulBS.py simulates up to 24 basestations, and xx takes.
 
-loraDir.py <NODES> <AVGSEND> <EXPERIMENT> <SIMTIME> [COLLISION]
-loraDirMulBS.py <NODES> <AVGSEND> <EXPERIMENT> <SIMTIME> <BASESTATIONS> [COLLISION]
-directionalLoraIntf.py <NODES> <AVGSEND> <EXPERIMENT> <SIMTIME> <BASESTATIONS> <COLLISION> <DIRECTIONALITY> <NETWORKS> <BASEDIST>
-oneDirectionalLoraIntf.py <NODES> <AVGSEND> <EXPERIMENT> <SIMTIME> <BASESTATIONS> <COLLISION> <DIRECTIONALITY> <NETWORKS> <BASEDIST>
+loraDir.py \<NODES> \<AVGSEND> \<EXPERIMENT> \<SIMTIME> [COLLISION]
+
+loraDirMulBS.py \<NODES> \<AVGSEND> \<EXPERIMENT> \<SIMTIME> \<BASESTATIONS> [COLLISION]
+
+directionalLoraIntf.py \<NODES> \<AVGSEND> \<EXPERIMENT> \<SIMTIME> \<BASESTATIONS> \<COLLISION> \<DIRECTIONALITY> \<NETWORKS> \<BASEDIST>
+
+oneDirectionalLoraIntf.py \<NODES> \<AVGSEND> \<EXPERIMENT> \<SIMTIME> \<BASESTATIONS> \<COLLISION> \<DIRECTIONALITY> \<NETWORKS> \<BASEDIST>
 
 ### Description
 
