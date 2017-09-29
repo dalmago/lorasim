@@ -44,7 +44,9 @@
  OUTPUT
     The result of every simulation run will be appended to a file named expX.dat,
     whereby X is the experiment number. The file contains a space separated table
-    of values for nodes, collisions, transmissions and total energy spent. The
+    of values for nodes, collisions, transmissions and total energy spent. The two
+    colliding message may still pass depending on the relative timing and difference
+    in receive power.
     data file can be easily plotted using e.g. gnuplot.
 """
 
@@ -57,7 +59,7 @@ import matplotlib.pyplot as plt
 import os
 
 # turn on/off graphics
-graphics = 0
+graphics = 1
 
 # do the full collision check
 full_collision = False
@@ -89,19 +91,19 @@ def checkcollision(packet):
         if packetsAtBS[i].packet.processed == 1:
             processing = processing + 1
     if (processing > maxBSReceives):
-        print "too long:", len(packetsAtBS)
+        print ("too long:", len(packetsAtBS))
         packet.processed = 0
     else:
         packet.processed = 1
 
     if packetsAtBS:
-        print "CHECK node {} (sf:{} bw:{} freq:{:.6e}) others: {}".format(
+        print ("CHECK node {} (sf:{} bw:{} freq:{:.6e}) others: {}".format(
              packet.nodeid, packet.sf, packet.bw, packet.freq,
-             len(packetsAtBS))
+             len(packetsAtBS)))
         for other in packetsAtBS:
             if other.nodeid != packet.nodeid:
-               print ">> node {} (sf:{} bw:{} freq:{:.6e})".format(
-                   other.nodeid, other.packet.sf, other.packet.bw, other.packet.freq)
+               print (">> node {} (sf:{} bw:{} freq:{:.6e})".format(
+                   other.nodeid, other.packet.sf, other.packet.bw, other.packet.freq))
                # simple collision
                if frequencyCollision(packet, other.packet) \
                    and sfCollision(packet, other.packet):
@@ -133,40 +135,40 @@ def checkcollision(packet):
 #        |f1-f2| <= 30 kHz if f1 or f2 has bw 125
 def frequencyCollision(p1,p2):
     if (abs(p1.freq-p2.freq)<=120 and (p1.bw==500 or p2.freq==500)):
-        print "frequency coll 500"
+        print ("frequency coll 500")
         return True
     elif (abs(p1.freq-p2.freq)<=60 and (p1.bw==250 or p2.freq==250)):
-        print "frequency coll 250"
+        print ("frequency coll 250")
         return True
     else:
         if (abs(p1.freq-p2.freq)<=30):
-            print "frequency coll 125"
+            print ("frequency coll 125")
             return True
         #else:
-    print "no frequency coll"
+    print ("no frequency coll")
     return False
 
 def sfCollision(p1, p2):
     if p1.sf == p2.sf:
-        print "collision sf node {} and node {}".format(p1.nodeid, p2.nodeid)
+        print ("collision sf node {} and node {}".format(p1.nodeid, p2.nodeid))
         # p2 may have been lost too, will be marked by other checks
         return True
-    print "no sf collision"
+    print ("no sf collision")
     return False
 
 def powerCollision(p1, p2):
     powerThreshold = 6 # dB
-    print "pwr: node {0.nodeid} {0.rssi:3.2f} dBm node {1.nodeid} {1.rssi:3.2f} dBm; diff {2:3.2f} dBm".format(p1, p2, round(p1.rssi - p2.rssi,2))
+    print ("pwr: node {0.nodeid} {0.rssi:3.2f} dBm node {1.nodeid} {1.rssi:3.2f} dBm; diff {2:3.2f} dBm".format(p1, p2, round(p1.rssi - p2.rssi,2)))
     if abs(p1.rssi - p2.rssi) < powerThreshold:
-        print "collision pwr both node {} and node {}".format(p1.nodeid, p2.nodeid)
+        print ("collision pwr both node {} and node {}".format(p1.nodeid, p2.nodeid))
         # packets are too close to each other, both collide
         # return both packets as casualties
         return (p1, p2)
     elif p1.rssi - p2.rssi < powerThreshold:
         # p2 overpowered p1, return p1 as casualty
-        print "collision pwr node {} overpowered node {}".format(p2.nodeid, p1.nodeid)
+        print ("collision pwr node {} overpowered node {}".format(p2.nodeid, p1.nodeid))
         return (p1,)
-    print "p1 wins, p2 lost"
+    print ("p1 wins, p2 lost")
     # p2 was the weaker packet, return it as a casualty
     return (p2,)
 
@@ -184,15 +186,15 @@ def timingCollision(p1, p2):
     # check whether p2 ends in p1's critical section
     p2_end = p2.addTime + p2.rectime
     p1_cs = env.now + Tpreamb
-    print "collision timing node {} ({},{},{}) node {} ({},{})".format(
+    print ("collision timing node {} ({},{},{}) node {} ({},{})".format(
         p1.nodeid, env.now - env.now, p1_cs - env.now, p1.rectime,
         p2.nodeid, p2.addTime - env.now, p2_end - env.now
-    )
+    ))
     if p1_cs < p2_end:
         # p1 collided with p2 and lost
-        print "not late enough"
+        print ("not late enough")
         return True
-    print "saved by the preamble"
+    print ("saved by the preamble")
     return False
 
 # this function computes the airtime of a packet
@@ -212,7 +214,7 @@ def airtime(sf,cr,pl,bw):
 
     Tsym = (2.0**sf)/bw
     Tpream = (Npream + 4.25)*Tsym
-    print "sf", sf, " cr", cr, "pl", pl, "bw", bw
+    print ("sf", sf, " cr", cr, "pl", pl, "bw", bw)
     payloadSymbNB = 8 + max(math.ceil((8.0*pl-4.0*sf+28+16-20*H)/(4.0*(sf-2*DE)))*(cr+4),0)
     Tpayload = payloadSymbNB * Tsym
     return Tpream + Tpayload
@@ -250,10 +252,10 @@ class myNode():
                     else:
                         rounds = rounds + 1
                         if rounds == 100:
-                            print "could not place new node, giving up"
+                            print ("could not place new node, giving up")
                             exit(-1)
             else:
-                print "first node"
+                print ("first node")
                 self.x = posx
                 self.y = posy
                 found = 1
@@ -315,7 +317,7 @@ class myPacket():
 
         # log-shadow
         Lpl = Lpld0 + 10*gamma*math.log10(distance/d0)
-        print "Lpl:", Lpl
+        print ("Lpl:", Lpl)
         Prx = self.txpow - GL - Lpl
 
         if (experiment == 3) or (experiment == 5):
@@ -323,7 +325,7 @@ class myPacket():
             minsf = 0
             minbw = 0
 
-            print "Prx:", Prx
+            print ("Prx:", Prx)
 
             for i in range(0,6):
                 for j in range(1,4):
@@ -342,9 +344,9 @@ class myPacket():
                             minbw = self.bw
                             minsensi = sensi[i, j]
             if (minairtime == 9999):
-                print "does not reach base station"
+                print ("does not reach base station")
                 exit(-1)
-            print "best sf:", minsf, " best bw: ", minbw, "best airtime:", minairtime
+            print ("best sf:", minsf, " best bw: ", minbw, "best airtime:", minairtime)
             self.rectime = minairtime
             self.sf = minsf
             self.bw = minbw
@@ -354,7 +356,7 @@ class myPacket():
                 # reduce the txpower if there's room left
                 self.txpow = max(2, self.txpow - math.floor(Prx - minsensi))
                 Prx = self.txpow - GL - Lpl
-                print 'minsesi {} best txpow {}'.format(minsensi, self.txpow)
+                print ('minsesi {} best txpow {}'.format(minsensi, self.txpow))
 
         # transmission range, needs update XXX
         self.transRange = 150
@@ -372,10 +374,10 @@ class myPacket():
         else:
             self.freq = 860000000
 
-        print "frequency" ,self.freq, "symTime ", self.symTime
-        print "bw", self.bw, "sf", self.sf, "cr", self.cr, "rssi", self.rssi
+        print ("frequency" ,self.freq, "symTime ", self.symTime)
+        print ("bw", self.bw, "sf", self.sf, "cr", self.cr, "rssi", self.rssi)
         self.rectime = airtime(self.sf,self.cr,self.pl,self.bw)
-        print "rectime node ", self.nodeid, "  ", self.rectime
+        print ("rectime node ", self.nodeid, "  ", self.rectime)
         # denote if packet is collided
         self.collided = 0
         self.processed = 0
@@ -394,11 +396,11 @@ def transmit(env,node):
 
         node.sent = node.sent + 1
         if (node in packetsAtBS):
-            print "ERROR: packet already in"
+            print ("ERROR: packet already in")
         else:
             sensitivity = sensi[node.packet.sf - 7, [125,250,500].index(node.packet.bw) + 1]
             if node.packet.rssi < sensitivity:
-                print "node {}: packet will be lost".format(node.nodeid)
+                print ("node {}: packet will be lost".format(node.nodeid))
                 node.packet.lost = True
             else:
                 node.packet.lost = False
@@ -438,6 +440,8 @@ def transmit(env,node):
 # "main" program
 #
 
+random.seed(0)
+
 # get arguments
 if len(sys.argv) >= 5:
     nrNodes = int(sys.argv[1])
@@ -446,14 +450,14 @@ if len(sys.argv) >= 5:
     simtime = int(sys.argv[4])
     if len(sys.argv) > 5:
         full_collision = bool(int(sys.argv[5]))
-    print "Nodes:", nrNodes
-    print "AvgSendTime (exp. distributed):",avgSendTime
-    print "Experiment: ", experiment
-    print "Simtime: ", simtime
-    print "Full Collision: ", full_collision
+    print ("Nodes:", nrNodes)
+    print ("AvgSendTime (exp. distributed):",avgSendTime)
+    print ("Experiment: ", experiment)
+    print ("Simtime: ", simtime)
+    print ("Full Collision: ", full_collision)
 else:
-    print "usage: ./loraDir <nodes> <avgsend> <experiment> <simtime> [collision]"
-    print "experiment 0 and 1 use 1 frequency only"
+    print ("usage: ./loraDir <nodes> <avgsend> <experiment> <simtime> [collision]")
+    print ("experiment 0 and 1 use 1 frequency only")
     exit(-1)
 
 
@@ -490,9 +494,9 @@ elif experiment == 2:
 elif experiment in [3,5]:
     minsensi = np.amin(sensi) ## Experiment 3 can use any setting, so take minimum
 Lpl = Ptx - minsensi
-print "amin", minsensi, "Lpl", Lpl
+print ("amin", minsensi, "Lpl", Lpl)
 maxDist = d0*(math.e**((Lpl-Lpld0)/(10.0*gamma)))
-print "maxDist:", maxDist
+print ("maxDist:", maxDist)
 
 # base station placement
 bsx = maxDist+10
@@ -528,7 +532,7 @@ if (graphics == 1):
 env.run(until=simtime)
 
 # print stats and save into file
-print "nrCollisions ", nrCollisions
+print ("nrCollisions ", nrCollisions)
 
 # compute energy
 # Transmit consumption in mA from -2 to +17 dBm
@@ -541,27 +545,27 @@ V = 3.0     # voltage XXX
 sent = sum(n.sent for n in nodes)
 energy = sum(node.packet.rectime * TX[int(node.packet.txpow)+2] * V * node.sent for node in nodes) / 1e6
 
-print "energy (in J): ", energy
-print "sent packets: ", sent
-print "collisions: ", nrCollisions
-print "received packets: ", nrReceived
-print "processed packets: ", nrProcessed
-print "lost packets: ", nrLost
+print ("energy (in J): ", energy)
+print ("sent packets: ", sent)
+print ("collisions: ", nrCollisions)
+print ("received packets: ", nrReceived)
+print ("processed packets: ", nrProcessed)
+print ("lost packets: ", nrLost)
 
 # data extraction rate
 der = (sent-nrCollisions)/float(sent)
-print "DER:", der
+print ("DER:", der)
 der = (nrReceived)/float(sent)
-print "DER method 2:", der
+print ("DER method 2:", der)
 
 # this can be done to keep graphics visible
 if (graphics == 1):
-    raw_input('Press Enter to continue ...')
+    input('Press Enter to continue ...')
 
 # save experiment data into a dat file that can be read by e.g. gnuplot
 # name of file would be:  exp0.dat for experiment 0
 fname = "exp" + str(experiment) + ".dat"
-print fname
+print (fname)
 if os.path.isfile(fname):
     res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
 else:
