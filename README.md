@@ -64,3 +64,6 @@ X-distance between two base stations.
 ### Output
 
 The result of every simulation run will be appended to a file named expX.dat, whereby X is the experiment number. The file contains a space separated table of values for nodes, collisions, transmissions and total energy spent. The data file can be easily plotted using e.g. gnuplot.
+
+# License
+LoRaSim - Copyright (c) 2016-2017 Thiemo Voigt and Martin Bor. This work is licensed under the Creative Commons Attribution 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/.

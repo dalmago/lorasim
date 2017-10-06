@@ -34,6 +34,7 @@
         3   optimise the setting per node based on the distance to the gateway.
         4   use the settings as defined in LoRaWAN (SF12, BW125, CR4/5).
         5   similair to experiment 3, but also optimises the transmit power.
+        6   ADR (without simulating downlink)
     simtime
         total running time in milliseconds
     collision
@@ -59,10 +60,10 @@ import matplotlib.pyplot as plt
 import os
 
 # turn on/off graphics
-graphics = 1
+graphics = False
 
 # do the full collision check
-full_collision = False
+full_collision = True
 
 # experiments:
 # 0: packet with longest airtime, aloha-style experiment
@@ -73,13 +74,23 @@ full_collision = False
 
 
 # this is an array with measured values for sensitivity
-# see paper, Table 3
+# see paper, Table 1
 sf7 = np.array([7,-126.5,-124.25,-120.75])
 sf8 = np.array([8,-127.25,-126.75,-124.0])
 sf9 = np.array([9,-131.25,-128.25,-127.5])
 sf10 = np.array([10,-132.75,-130.25,-128.75])
 sf11 = np.array([11,-134.5,-132.75,-128.75])
 sf12 = np.array([12,-133.25,-132.25,-132.25])
+
+# required SNR for each SF
+adr_snr_req = {
+    7: -7.5,
+    8: -10,
+    9: -12.5,
+    10: -15,
+    11: -17.5,
+    12: -20
+}
 
 #
 # check for collisions at base station
@@ -92,7 +103,7 @@ def checkcollision(packet):
             processing = processing + 1
     if (processing > maxBSReceives):
         print ("too long:", len(packetsAtBS))
-        packet.processed = 0
+        packet.processed = 0  # TODO: change to boolean
     else:
         packet.processed = 1
 
@@ -127,14 +138,14 @@ def checkcollision(packet):
         return col
     return 0
 
-#
+
 # frequencyCollision, conditions
 #
 #        |f1-f2| <= 120 kHz if f1 or f2 has bw 500
 #        |f1-f2| <= 60 kHz if f1 or f2 has bw 250
 #        |f1-f2| <= 30 kHz if f1 or f2 has bw 125
 def frequencyCollision(p1,p2):
-    if (abs(p1.freq-p2.freq)<=120 and (p1.bw==500 or p2.freq==500)):
+    if (abs(p1.freq-p2.freq)<=120 and (p1.bw==500 or p2.freq==500)): # TODO: verify this line. p2.freq or p2.bw?
         print ("frequency coll 500")
         return True
     elif (abs(p1.freq-p2.freq)<=60 and (p1.bw==250 or p2.freq==250)):
@@ -222,7 +233,7 @@ def airtime(sf,cr,pl,bw):
 #
 # this function creates a node
 #
-class myNode():
+class myNode:
     def __init__(self, nodeid, bs, period, packetlen):
         self.nodeid = nodeid
         self.period = period
@@ -266,8 +277,7 @@ class myNode():
         self.sent = 0
 
         # graphics for node
-        global graphics
-        if (graphics == 1):
+        if graphics:
             global ax
             ax.add_artist(plt.Circle((self.x, self.y), 2, fill=True, color='blue'))
 
@@ -275,9 +285,8 @@ class myNode():
 # this function creates a packet (associated with a node)
 # it also sets all parameters, currently random
 #
-class myPacket():
+class myPacket:
     def __init__(self, nodeid, plen, distance):
-        global experiment
         global Ptx
         global gamma
         global d0
@@ -288,39 +297,39 @@ class myPacket():
         self.nodeid = nodeid
         self.txpow = Ptx
 
-        # randomize configuration values
-        self.sf = random.randint(6,12)
-        self.cr = random.randint(1,4)
-        self.bw = random.choice([125, 250, 500])
-
         # for certain experiments override these
-        if experiment==1 or experiment == 0:
+        if experiment == 1 or experiment == 0:
             self.sf = 12
             self.cr = 4
             self.bw = 125
 
         # for certain experiments override these
-        if experiment==2:
+        elif experiment == 2:
             self.sf = 6
             self.cr = 1
             self.bw = 500
         # lorawan
-        if experiment == 4:
+        elif experiment == 4 or experiment == 6:
             self.sf = 12
             self.cr = 1
             self.bw = 125
 
+        else:
+            # randomize configuration values
+            self.sf = random.randint(6, 12)
+            self.cr = random.randint(1, 4)
+            self.bw = random.choice([125, 250, 500])
 
         # for experiment 3 find the best setting
         # OBS, some hardcoded values
-        Prx = self.txpow  ## zero path loss by default
+        Prx = self.txpow  ## zero path loss by default  TODO: isn't this line overwritten later?
 
         # log-shadow
-        Lpl = Lpld0 + 10*gamma*math.log10(distance/d0)
+        Lpl = Lpld0 + 10*gamma*math.log10(distance/d0) # TODO: add variance
         print ("Lpl:", Lpl)
         Prx = self.txpow - GL - Lpl
 
-        if (experiment == 3) or (experiment == 5):
+        if experiment == 3 or experiment == 5:
             minairtime = 9999
             minsf = 0
             minbw = 0
@@ -329,7 +338,7 @@ class myPacket():
 
             for i in range(0,6):
                 for j in range(1,4):
-                    if (sensi[i,j] < Prx):
+                    if sensi[i,j] < Prx:
                         self.sf = int(sensi[i,0])
                         if j==1:
                             self.bw = 125
@@ -343,7 +352,7 @@ class myPacket():
                             minsf = self.sf
                             minbw = self.bw
                             minsensi = sensi[i, j]
-            if (minairtime == 9999):
+            if minairtime == 9999:
                 print ("does not reach base station")
                 exit(-1)
             print ("best sf:", minsf, " best bw: ", minbw, "best airtime:", minairtime)
@@ -354,18 +363,22 @@ class myPacket():
 
             if experiment == 5:
                 # reduce the txpower if there's room left
-                self.txpow = max(2, self.txpow - math.floor(Prx - minsensi))
+                self.txpow = max(2, self.txpow - math.floor(Prx - minsensi)) # TODO: verify. why 2?
                 Prx = self.txpow - GL - Lpl
                 print ('minsesi {} best txpow {}'.format(minsensi, self.txpow))
 
         # transmission range, needs update XXX
-        self.transRange = 150
+        self.transRange = 150  # TODO: verify. Is this used somewhere?
         self.pl = plen
         self.symTime = (2.0**self.sf)/self.bw
         self.arriveTime = 0
         self.rssi = Prx
+        print("RSSI:", self.rssi)  # TODO: verify. dBm?
         # frequencies: lower bound + number of 61 Hz steps
-        self.freq = 860000000 + random.randint(0,2622950)
+        self.freq = 860000000 + random.randint(0,2622950) # TODO: is this line needed? Isn't it overwritten later?
+
+        self.snr = self.rssi - noise
+        self.snrList = []
 
         # for certain experiments override these and
         # choose some random frequences
@@ -395,7 +408,7 @@ def transmit(env,node):
         # packet arrives -> add to base station
 
         node.sent = node.sent + 1
-        if (node in packetsAtBS):
+        if node in packetsAtBS:
             print ("ERROR: packet already in")
         else:
             sensitivity = sensi[node.packet.sf - 7, [125,250,500].index(node.packet.bw) + 1]
@@ -413,6 +426,37 @@ def transmit(env,node):
                 node.packet.addTime = env.now
 
         yield env.timeout(node.packet.rectime)
+
+        if experiment == 6:
+            if not node.packet.lost:
+                node.packet.snrList.append(node.packet.snr)
+
+                if len(node.packet.snrList) >= 20:  # > just for feeling safe
+                    maxSNR = max(node.packet.snrList)
+
+                    snr_margin = maxSNR - adr_snr_req[node.packet.sf] - adr_margin
+
+                    snr_var = round(snr_margin / 3)
+
+                    if snr_var > 0:
+                        if node.packet.sf > 7:
+                            node.packet.sf -= snr_var
+                            if node.packet.sf < 7:
+                                node.packet.sf = 7
+                    else:
+                        if node.packet.sf < 12:
+                            node.packet.sf += snr_var
+                            if node.packet.sf > 12:
+                                node.packet.sf = 12
+
+                    node.packet.snrList = []
+
+            else:
+                if node.packet.sf < 12:
+                    node.packet.sf += 1
+
+            # if node.nodeid == 1:
+            print("node", node.nodeid, "SF:", node.packet.sf)
 
         if node.packet.lost:
             global nrLost
@@ -436,33 +480,8 @@ def transmit(env,node):
         node.packet.processed = 0
         node.packet.lost = False
 
-#
-# "main" program
-#
-
-random.seed(0)
-
-# get arguments
-if len(sys.argv) >= 5:
-    nrNodes = int(sys.argv[1])
-    avgSendTime = int(sys.argv[2])
-    experiment = int(sys.argv[3])
-    simtime = int(sys.argv[4])
-    if len(sys.argv) > 5:
-        full_collision = bool(int(sys.argv[5]))
-    print ("Nodes:", nrNodes)
-    print ("AvgSendTime (exp. distributed):",avgSendTime)
-    print ("Experiment: ", experiment)
-    print ("Simtime: ", simtime)
-    print ("Full Collision: ", full_collision)
-else:
-    print ("usage: ./loraDir <nodes> <avgsend> <experiment> <simtime> [collision]")
-    print ("experiment 0 and 1 use 1 frequency only")
-    exit(-1)
-
 
 # global stuff
-#Rnd = random.seed(12345)
 nodes = []
 packetsAtBS = []
 env = simpy.Environment()
@@ -486,96 +505,122 @@ var = 0           # variance ignored for now
 Lpld0 = 127.41
 GL = 0
 
-sensi = np.array([sf7,sf8,sf9,sf10,sf11,sf12])
-if experiment in [0,1,4]:
-    minsensi = sensi[5,2]  # 5th row is SF12, 2nd column is BW125
-elif experiment == 2:
-    minsensi = -112.0   # no experiments, so value from datasheet
-elif experiment in [3,5]:
-    minsensi = np.amin(sensi) ## Experiment 3 can use any setting, so take minimum
-Lpl = Ptx - minsensi
-print ("amin", minsensi, "Lpl", Lpl)
-maxDist = d0*(math.e**((Lpl-Lpld0)/(10.0*gamma)))
-print ("maxDist:", maxDist)
+noise = -54
+adr_margin = 10
 
-# base station placement
-bsx = maxDist+10
-bsy = maxDist+10
-xmax = bsx + maxDist + 20
-ymax = bsy + maxDist + 20
+MAIN_FREQ = 915e6 # TODO: use this value on the code
 
-# prepare graphics and add sink
-if (graphics == 1):
-    plt.ion()
-    plt.figure()
-    ax = plt.gcf().gca()
-    # XXX should be base station position
-    ax.add_artist(plt.Circle((bsx, bsy), 3, fill=True, color='green'))
-    ax.add_artist(plt.Circle((bsx, bsy), maxDist, fill=False, color='green'))
+if __name__ == "__main__":
+    random.seed(0)
+
+    # get arguments
+    if len(sys.argv) >= 5:
+        nrNodes = int(sys.argv[1])
+        avgSendTime = int(sys.argv[2])
+        experiment = int(sys.argv[3])
+        simtime = int(sys.argv[4])
+        if len(sys.argv) > 5:
+            full_collision = bool(int(sys.argv[5]))
+        print ("Nodes:", nrNodes)
+        print ("AvgSendTime (exp. distributed):",avgSendTime)
+        print ("Experiment: ", experiment)
+        print ("Simtime: ", simtime)
+        print ("Full Collision: ", full_collision)
+    else:
+        print ("usage: ./loraDir <nodes> <avgsend> <experiment> <simtime> [collision]")
+        print ("experiment 0 and 1 use 1 frequency only")
+        exit(-1)
+
+    sensi = np.array([sf7,sf8,sf9,sf10,sf11,sf12])
+    if experiment in [0,1,4,6]:
+        minsensi = sensi[5,2]  # 5th row is SF12, 2nd column is BW125 # TODO: verify - 2nd column is BW125?
+    elif experiment == 2:
+        minsensi = -112.0   # no experiments, so value from datasheet
+    elif experiment in [3,5]:
+        minsensi = np.amin(sensi) ## Experiment 3 can use any setting, so take minimum
+    Lpl = Ptx - minsensi # max path loss
+    print ("amin", minsensi, "Lpl", Lpl)
+    maxDist = d0*(math.e**((Lpl-Lpld0)/(10.0*gamma)))
+    print ("maxDist:", maxDist)
+
+    # base station placement
+    bsx = maxDist+10
+    bsy = maxDist+10
+    xmax = bsx + maxDist + 20
+    ymax = bsy + maxDist + 20
+
+    # prepare graphics and add sink
+    if graphics:
+        plt.ion()
+        plt.figure()
+        ax = plt.gcf().gca()
+        # XXX should be base station position
+        ax.add_artist(plt.Circle((bsx, bsy), 3, fill=True, color='green'))
+        ax.add_artist(plt.Circle((bsx, bsy), maxDist, fill=False, color='green'))
 
 
-for i in range(0,nrNodes):
-    # myNode takes period (in ms), base station id packetlen (in Bytes)
-    # 1000000 = 16 min
-    node = myNode(i,bsId, avgSendTime,20)
-    nodes.append(node)
-    env.process(transmit(env,node))
+    for i in range(0,nrNodes):
+        # myNode takes period (in ms), base station id packetlen (in Bytes)
+        # 1000000 = 16 min
+        node = myNode(i,bsId, avgSendTime,20)
+        nodes.append(node)
+        env.process(transmit(env,node))
 
-#prepare show
-if (graphics == 1):
-    plt.xlim([0, xmax])
-    plt.ylim([0, ymax])
-    plt.draw()
-    plt.show()
+    #prepare show
+    if graphics:
+        plt.xlim([0, xmax])
+        plt.ylim([0, ymax])
+        plt.draw()
+        plt.show()
 
-# start simulation
-env.run(until=simtime)
+    # start simulation
+    env.run(until=simtime)
 
-# print stats and save into file
-print ("nrCollisions ", nrCollisions)
+    # print stats and save into file
+    print ("nrCollisions ", nrCollisions)
 
-# compute energy
-# Transmit consumption in mA from -2 to +17 dBm
-TX = [22, 22, 22, 23,                                      # RFO/PA0: -2..1
-      24, 24, 24, 25, 25, 25, 25, 26, 31, 32, 34, 35, 44,  # PA_BOOST/PA1: 2..14
-      82, 85, 90,                                          # PA_BOOST/PA1: 15..17
-      105, 115, 125]                                       # PA_BOOST/PA1+PA2: 18..20
-# mA = 90    # current draw for TX = 17 dBm
-V = 3.0     # voltage XXX
-sent = sum(n.sent for n in nodes)
-energy = sum(node.packet.rectime * TX[int(node.packet.txpow)+2] * V * node.sent for node in nodes) / 1e6
+    # compute energy
+    # Transmit consumption in mA from -2 to +17 dBm
+    TX = [22, 22, 22, 23,                                      # RFO/PA0: -2..1
+          24, 24, 24, 25, 25, 25, 25, 26, 31, 32, 34, 35, 44,  # PA_BOOST/PA1: 2..14
+          82, 85, 90,                                          # PA_BOOST/PA1: 15..17
+          105, 115, 125]                                       # PA_BOOST/PA1+PA2: 18..20
+    # mA = 90    # current draw for TX = 17 dBm
+    V = 3.0     # voltage XXX
+    sent = sum(n.sent for n in nodes)
+    energy = sum(node.packet.rectime * TX[int(node.packet.txpow)+2] * V * node.sent for node in nodes) / 1e6
 
-print ("energy (in J): ", energy)
-print ("sent packets: ", sent)
-print ("collisions: ", nrCollisions)
-print ("received packets: ", nrReceived)
-print ("processed packets: ", nrProcessed)
-print ("lost packets: ", nrLost)
+    print ("energy (in J): ", energy)
+    print ("sent packets: ", sent)
+    print ("collisions: ", nrCollisions)
+    print ("received packets: ", nrReceived)
+    print ("processed packets: ", nrProcessed)
+    print ("lost packets: ", nrLost)
 
-# data extraction rate
-der = (sent-nrCollisions)/float(sent)
-print ("DER:", der)
-der = (nrReceived)/float(sent)
-print ("DER method 2:", der)
+    # data extraction rate
+    der = (sent-nrCollisions)/float(sent)
+    print ("DER:", der)
+    der = (nrReceived)/float(sent)
+    print ("DER method 2:", der)
 
-# this can be done to keep graphics visible
-if (graphics == 1):
-    input('Press Enter to continue ...')
+    # this can be done to keep graphics visible
+    if graphics:
+        input('Press Enter to continue ...')
 
-# save experiment data into a dat file that can be read by e.g. gnuplot
-# name of file would be:  exp0.dat for experiment 0
-fname = "exp" + str(experiment) + ".dat"
-print (fname)
-if os.path.isfile(fname):
-    res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
-else:
-    res = "#nrNodes nrCollisions nrTransmissions OverallEnergy\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
-with open(fname, "a") as myfile:
-    myfile.write(res)
-myfile.close()
+    # save experiment data into a dat file that can be read by e.g. gnuplot
+    # name of file would be:  exp0.dat for experiment 0
+    fname = "exp" + str(experiment) + ".dat"
+    print (fname)
+    if os.path.isfile(fname):
+        res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
+    else:
+        res = "#nrNodes nrCollisions nrTransmissions OverallEnergy\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
+    with open(fname, "a") as myfile:
+        myfile.write(res)
+    myfile.close()
 
-# with open('nodes.txt','w') as nfile:
-#     for n in nodes:
-#         nfile.write("{} {} {}\n".format(n.x, n.y, n.nodeid))
-# with open('basestation.txt', 'w') as bfile:
-#     bfile.write("{} {} {}\n".format(bsx, bsy, 0))
+    # with open('nodes.txt','w') as nfile:
+    #     for n in nodes:
+    #         nfile.write("{} {} {}\n".format(n.x, n.y, n.nodeid))
+    # with open('basestation.txt', 'w') as bfile:
+    #     bfile.write("{} {} {}\n".format(bsx, bsy, 0))
