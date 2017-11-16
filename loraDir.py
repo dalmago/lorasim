@@ -594,7 +594,7 @@ noise = -54
 adr_margin = 10
 
 # compute energy
-# Transmit consumption in mA from -2 to +17 dBm
+# Transmit consumption in mA from -2 to +20 dBm
 TX = [22, 22, 22, 23,                                      # RFO/PA0: -2..1
       24, 24, 24, 25, 25, 25, 25, 26, 31, 32, 34, 35, 44,  # PA_BOOST/PA1: 2..14
       82, 85, 90,                                          # PA_BOOST/PA1: 15..17
