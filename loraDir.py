@@ -303,7 +303,23 @@ class myNode:
         # graphics for node
         if graphics:
             global ax
-            ax.add_artist(plt.Circle((self.x, self.y), 2, fill=True, color='blue'))
+
+            sens = self.packet.sens  # 14 down to -133.25
+
+            minSens = -133.25
+            maxSens = -120.75
+
+            a = -1/(minSens-maxSens)
+            b = 1 - maxSens*a
+
+            sensNorm = a*sens + b  # normalized
+
+            if sens < minSens:
+                rgb = (0,0,1)
+            else:
+                rgb = (sensNorm, 0, 0)
+
+            ax.add_artist(plt.Circle((self.x, self.y), 2, fill=True, color=rgb))
 
 #
 # this function creates a packet (associated with a node)
@@ -344,9 +360,6 @@ class myPacket:
             self.cr = random.randint(1, 4)
             self.bw = random.choice([125, 250, 500])
 
-        if sf_bw is not None:
-            self.sf, self.bw = sf_bw
-
         # for experiment 3 find the best setting
         # OBS, some hardcoded values
         Prx = self.txpow  ## zero path loss by default  TODO: isn't this line overwritten later?
@@ -355,6 +368,34 @@ class myPacket:
         Lpl = Lpld0 + 10*gamma*math.log10(distance/d0) # TODO: add variance
         print ("Lpl:", Lpl)
         Prx = self.txpow - GL - Lpl
+
+        if sf_bw is not None:
+            self.sf, self.bw = sf_bw
+        else:
+            sensitivity = sensi[self.sf - 7, [125, 250, 500].index(self.bw) + 1]
+            while Prx > sensitivity and self.sf > 7:
+                self.sf -= 1
+                sensitivity = sensi[self.sf - 7, [125, 250, 500].index(self.bw) + 1]
+
+            if Prx < sensitivity and self.sf < 12:
+                self.sf += 1
+                sensitivity = sensi[self.sf - 7, [125, 250, 500].index(self.bw) + 1]
+
+            while Prx > sensitivity and self.bw != 500:
+                if self.bw == 125:
+                    self.bw = 250
+                else:
+                    self.bw = 500
+
+                sensitivity = sensi[self.sf - 7, [125, 250, 500].index(self.bw) + 1]
+
+            if Prx < sensitivity and self.bw != 125:
+                if self.bw == 250:
+                    self.bw = 125
+                else:
+                    self.bw = 250
+
+        self.sens = sensi[self.sf - 7, [125, 250, 500].index(self.bw) + 1]
 
         if experiment == 3 or experiment == 5:
             minairtime = 9999
@@ -608,7 +649,7 @@ def run(exp, sf_bw=None, nNodes=None):
     experiment = exp
 
     if exp in [0, 1, 4, 6]:
-        minsensi = sensi[5, 2]  # 5th row is SF12, 2nd column is BW125 # TODO: verify - 2nd column is BW125?
+        minsensi = sensi[5, 1]  # 5th row is SF12, 2nd column is BW125 # TODO: verify - 2nd column is BW125?
     elif exp == 2:
         minsensi = -112.0  # no experiments, so value from datasheet
     # elif experiment in [3,5]:
@@ -653,13 +694,14 @@ def run(exp, sf_bw=None, nNodes=None):
                 env.process(transmit(env, node))
 
     else:
-        print("Generating random nodes...")
-        for i in range(0,nrNodes):
-            # myNode takes period (in ms), base station id packetlen (in Bytes)
-            # 1000000 = 16 min
-            node = myNode(i,bsId, avgSendTime,20)
-            nodes.append(node)
-            env.process(transmit(env,node))
+        exit()
+        # print("Generating random nodes...")
+        # for i in range(0,nrNodes):
+        #     # myNode takes period (in ms), base station id packetlen (in Bytes)
+        #     # 1000000 = 16 min
+        #     node = myNode(i,bsId, avgSendTime,20)
+        #     nodes.append(node)
+        #     env.process(transmit(env,node))
 
     #prepare show
     if graphics:

@@ -18,17 +18,32 @@ class Individual(object):
     def fitness(self, optimum=None):
         # de 0 a 100
         # 0 eh baixo
-        der, energy = self._evaluate()
+        self.der, self.energy = self._evaluate()
 
-        fit = der
+        fit = self.der
 
         self.score = fit
 
         return fit
 
     def crossover(self, other):
-        chrom = self.chromosome[:nodes*self.length//2]
-        chrom.extend(other.chromosome[nodes*self.length//2:])
+
+        length = nodes*self.length
+
+        chrom = self.chromosome[:length//3]
+        chrom.extend(other.chromosome[length//3:2*length//3])
+        chrom.extend(self.chromosome[2*length//3:])
+
+        if random.random() < 0.1:
+            mutation_len = round(length*random.uniform(0, 0.1))
+
+            for i in range(mutation_len):
+                index = random.randrange(0, length)
+                chrom[index] ^= 1
+
+
+        # chrom = self.chromosome[:nodes*self.length//2]
+        # chrom.extend(other.chromosome[nodes*self.length//2:])
 
         ind = Individual(chromosome=chrom)
         ind.fitness()
@@ -152,13 +167,23 @@ class Environment(object):
     def _makepopulation(self):
         return [self.kind() for individual in range(self.size)]
 
+    def _goal(self):
+        return self.generation >= self.maxgenerations or self.best.score >= self.optimum
+
+    def run(self):
+        try:
+            while not self._goal():
+                self.step()
+        except KeyboardInterrupt:
+            self.report()
+
     def report(self):
         print("=" * 70)
         print("generation: ", self.generation)
         print("best:       ", self.best.score)
+        print("der:        ", self.best.der)
+        print("energy:     ", self.best.energy)
 
-nodes = 50
-env = Environment(Individual)
-env.step()
-env.step()
-env.step()
+nodes = 100
+env = Environment(Individual, optimum=0.99)
+env.run()
