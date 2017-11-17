@@ -110,19 +110,19 @@ def checkcollision(packet):
         if packetsAtBS[i].packet.processed == 1:
             processing = processing + 1
     if (processing > maxBSReceives):
-        print ("too long:", len(packetsAtBS))
+        # print ("too long:", len(packetsAtBS))
         packet.processed = 0  # TODO: change to boolean
     else:
         packet.processed = 1
 
     if packetsAtBS:
-        print ("CHECK node {} (sf:{} bw:{} freq:{:.6e}) others: {}".format(
-             packet.nodeid, packet.sf, packet.bw, packet.freq,
-             len(packetsAtBS)))
+        # print ("CHECK node {} (sf:{} bw:{} freq:{:.6e}) others: {}".format(
+        #      packet.nodeid, packet.sf, packet.bw, packet.freq,
+        #      len(packetsAtBS)))
         for other in packetsAtBS:
             if other.nodeid != packet.nodeid:
-               print (">> node {} (sf:{} bw:{} freq:{:.6e})".format(
-                   other.nodeid, other.packet.sf, other.packet.bw, other.packet.freq))
+               # print (">> node {} (sf:{} bw:{} freq:{:.6e})".format(
+               #     other.nodeid, other.packet.sf, other.packet.bw, other.packet.freq))
                # simple collision
                if frequencyCollision(packet, other.packet):
                    if timingCollision(packet, other.packet):
@@ -156,40 +156,40 @@ def checkcollision(packet):
 #        |f1-f2| <= 30 kHz if f1 or f2 has bw 125
 def frequencyCollision(p1,p2):
     if (abs(p1.freq-p2.freq)<=120 and (p1.bw==500 or p2.freq==500)): # TODO: verify this line. p2.freq or p2.bw?
-        print ("frequency coll 500")
+        # print ("frequency coll 500")
         return True
     elif (abs(p1.freq-p2.freq)<=60 and (p1.bw==250 or p2.freq==250)):
-        print ("frequency coll 250")
+        # print ("frequency coll 250")
         return True
     else:
         if (abs(p1.freq-p2.freq)<=30):
-            print ("frequency coll 125")
+            # print ("frequency coll 125")
             return True
         #else:
-    print ("no frequency coll")
+    # print ("no frequency coll")
     return False
 
 def sfCollision(p1, p2):
     if p1.sf == p2.sf:
-        print ("collision sf node {} and node {}".format(p1.nodeid, p2.nodeid))
+        # print ("collision sf node {} and node {}".format(p1.nodeid, p2.nodeid))
         # p2 may have been lost too, will be marked by other checks
         return True
-    print ("no sf collision")
+    # print ("no sf collision")
     return False
 
 def powerCollision(p1, p2):
     powerThreshold = 6 # dB
-    print ("pwr: node {0.nodeid} {0.rssi:3.2f} dBm node {1.nodeid} {1.rssi:3.2f} dBm; diff {2:3.2f} dBm".format(p1, p2, round(p1.rssi - p2.rssi,2)))
+    # print ("pwr: node {0.nodeid} {0.rssi:3.2f} dBm node {1.nodeid} {1.rssi:3.2f} dBm; diff {2:3.2f} dBm".format(p1, p2, round(p1.rssi - p2.rssi,2)))
     if abs(p1.rssi - p2.rssi) < powerThreshold:
-        print ("collision pwr both node {} and node {}".format(p1.nodeid, p2.nodeid))
+        # print ("collision pwr both node {} and node {}".format(p1.nodeid, p2.nodeid))
         # packets are too close to each other, both collide
         # return both packets as casualties
         return (p1, p2)
     elif p1.rssi - p2.rssi < powerThreshold:
         # p2 overpowered p1, return p1 as casualty
-        print ("collision pwr node {} overpowered node {}".format(p2.nodeid, p1.nodeid))
+        # print ("collision pwr node {} overpowered node {}".format(p2.nodeid, p1.nodeid))
         return (p1,)
-    print ("p1 wins, p2 lost")
+    # print ("p1 wins, p2 lost")
     # p2 was the weaker packet, return it as a casualty
     return (p2,)
 
@@ -207,15 +207,15 @@ def timingCollision(p1, p2):
     # check whether p2 ends in p1's critical section
     p2_end = p2.addTime + p2.rectime
     p1_cs = env.now + Tpreamb
-    print ("collision timing node {} ({},{},{}) node {} ({},{})".format(
-        p1.nodeid, env.now - env.now, p1_cs - env.now, p1.rectime,
-        p2.nodeid, p2.addTime - env.now, p2_end - env.now
-    ))
+    # print ("collision timing node {} ({},{},{}) node {} ({},{})".format(
+    #     p1.nodeid, env.now - env.now, p1_cs - env.now, p1.rectime,
+    #     p2.nodeid, p2.addTime - env.now, p2_end - env.now
+    # ))
     if p1_cs < p2_end:
         # p1 collided with p2 and lost
-        print ("not late enough")
+        # print ("not late enough")
         return True
-    print ("saved by the preamble")
+    # print ("saved by the preamble")
     return False
 
 # sf co-interference protection
@@ -243,7 +243,7 @@ def airtime(sf,cr,pl,bw):
 
     Tsym = (2.0**sf)/bw
     Tpream = (Npream + 4.25)*Tsym
-    print ("sf", sf, " cr", cr, "pl", pl, "bw", bw)
+    # print ("sf", sf, " cr", cr, "pl", pl, "bw", bw)
     payloadSymbNB = 8 + max(math.ceil((8.0*pl-4.0*sf+28+16-20*H)/(4.0*(sf-2*DE)))*(cr+4),0)
     Tpayload = payloadSymbNB * Tsym
     return Tpream + Tpayload
@@ -283,10 +283,10 @@ class myNode:
                         else:
                             rounds = rounds + 1
                             if rounds == 100:
-                                print ("could not place new node, giving up")
+                                # print ("could not place new node, giving up")
                                 exit(-1)
                 else:
-                    print ("first node")
+                    # print ("first node")
                     self.x = posx
                     self.y = posy
                     found = 1
@@ -295,7 +295,7 @@ class myNode:
             self.y = y
 
         self.dist = np.sqrt((self.x-bsx)*(self.x-bsx)+(self.y-bsy)*(self.y-bsy))
-        print('node %d' %nodeid, "x", self.x, "y", self.y, "dist: ", self.dist)
+        # print('node %d' %nodeid, "x", self.x, "y", self.y, "dist: ", self.dist)
 
         self.packet = myPacket(self.nodeid, packetlen, self.dist, sf_bw)
         self.sent = 0
@@ -366,7 +366,7 @@ class myPacket:
 
         # log-shadow
         Lpl = Lpld0 + 10*gamma*math.log10(distance/d0) # TODO: add variance
-        print ("Lpl:", Lpl)
+        # print ("Lpl:", Lpl)
         Prx = self.txpow - GL - Lpl
 
         if sf_bw is not None:
@@ -402,7 +402,7 @@ class myPacket:
             minsf = 0
             minbw = 0
 
-            print ("Prx:", Prx)
+            # print ("Prx:", Prx)
 
             for i in range(0,6):
                 for j in range(1,4):
@@ -421,9 +421,9 @@ class myPacket:
                             minbw = self.bw
                             minsensi = sensi[i, j]
             if minairtime == 9999:
-                print ("does not reach base station")
+                # print ("does not reach base station")
                 exit(-1)
-            print ("best sf:", minsf, " best bw: ", minbw, "best airtime:", minairtime)
+            # print ("best sf:", minsf, " best bw: ", minbw, "best airtime:", minairtime)
             self.rectime = minairtime
             self.sf = minsf
             self.bw = minbw
@@ -433,7 +433,7 @@ class myPacket:
                 # reduce the txpower if there's room left
                 self.txpow = max(2, self.txpow - math.floor(Prx - minsensi)) # TODO: verify. why 2?
                 Prx = self.txpow - GL - Lpl
-                print ('minsesi {} best txpow {}'.format(minsensi, self.txpow))
+                # print ('minsesi {} best txpow {}'.format(minsensi, self.txpow))
 
         else:
             self.rectime = airtime(self.sf, 1, plen, self.bw)
@@ -444,7 +444,7 @@ class myPacket:
         self.symTime = (2.0**self.sf)/self.bw
         self.arriveTime = 0
         self.rssi = Prx
-        print("RSSI:", self.rssi)  # TODO: verify. dBm?
+        # print("RSSI:", self.rssi)  # TODO: verify. dBm?
         # frequencies: lower bound + number of 61 Hz steps
         self.freq = 860000000 + random.randint(0,2622950) # TODO: is this line needed? Isn't it overwritten later?
 
@@ -458,10 +458,10 @@ class myPacket:
         else:
             self.freq = 860000000
 
-        print ("frequency" ,self.freq, "symTime ", self.symTime)
-        print ("bw", self.bw, "sf", self.sf, "cr", self.cr, "rssi", self.rssi)
+        # print ("frequency" ,self.freq, "symTime ", self.symTime)
+        # print ("bw", self.bw, "sf", self.sf, "cr", self.cr, "rssi", self.rssi)
         self.rectime = airtime(self.sf,self.cr,self.pl,self.bw)
-        print ("rectime node ", self.nodeid, "  ", self.rectime)
+        # print ("rectime node ", self.nodeid, "  ", self.rectime)
         # denote if packet is collided
         self.collided = 0
         self.processed = 0
@@ -481,13 +481,14 @@ def transmit(env,node):
 
         node.sent = node.sent + 1
         if node in packetsAtBS:
-            print ("ERROR: packet already in")
+            # print ("ERROR: packet already in")
+            pass
         else:
-            print("----transmitting %s" %(node.nodeid))
+            # print("----transmitting %s" %(node.nodeid))
             sensitivity = sensi[node.packet.sf - 7, [125,250,500].index(node.packet.bw) + 1]
             if node.packet.rssi < sensitivity:
-                print("----lost %s" % (node.nodeid))
-                print ("node {}: packet will be lost".format(node.nodeid))
+                # print("----lost %s" % (node.nodeid))
+                # print ("node {}: packet will be lost".format(node.nodeid))
                 node.packet.lost = True
             else:
                 node.packet.lost = False
@@ -497,12 +498,12 @@ def transmit(env,node):
                 else:
                     node.packet.collided = 0
 
-                print("----not lost, collided: %s, %s" % (node.packet.collided, node.nodeid))
+                # print("----not lost, collided: %s, %s" % (node.packet.collided, node.nodeid))
                 packetsAtBS.append(node)
                 node.packet.addTime = env.now
 
         yield env.timeout(node.packet.rectime)
-        print("----rectime: %s" % (node.nodeid))
+        # print("----rectime: %s" % (node.nodeid))
 
         if experiment == 6:
             if not node.packet.lost:
@@ -533,7 +534,7 @@ def transmit(env,node):
                     node.packet.sf += 1
 
             # if node.nodeid == 1:
-            print("node", node.nodeid, "SF:", node.packet.sf)
+            # print("node", node.nodeid, "SF:", node.packet.sf)
 
         if node.packet.lost:
             global nrLost
@@ -542,11 +543,11 @@ def transmit(env,node):
             global nrCollisions
             nrCollisions = nrCollisions +1
 
-        print("----almost! %s %s %s" % (node.packet.collided, node.packet.lost, node.nodeid))
+        # print("----almost! %s %s %s" % (node.packet.collided, node.packet.lost, node.nodeid))
         if node.packet.collided == 0 and not node.packet.lost:
             global nrReceived
             nrReceived = nrReceived + 1
-            print("----received! %s %s" % (nrReceived, node.nodeid))
+            # print("----received! %s %s" % (nrReceived, node.nodeid))
         if node.packet.processed == 1:
             global nrProcessed
             nrProcessed = nrProcessed + 1
@@ -657,9 +658,9 @@ def run(exp, sf_bw=None, nNodes=None):
         minsensi = np.amin(sensi)  ## Experiment 3 can use any setting, so take minimum
 
     Lpl = Ptx - minsensi  # max path loss
-    print("amin", minsensi, "Lpl", Lpl)
+    # print("amin", minsensi, "Lpl", Lpl)
     maxDist = d0 * (math.e ** ((Lpl - Lpld0) / (10.0 * gamma)))
-    print("maxDist:", maxDist)
+    # print("maxDist:", maxDist)
 
     # base station placement
     bsx = maxDist + 10
@@ -741,7 +742,7 @@ def run(exp, sf_bw=None, nNodes=None):
     # save experiment data into a dat file that can be read by e.g. gnuplot
     # name of file would be:  exp0.dat for experiment 0
     fname = "exp" + str(exp) + ".dat"
-    print (fname)
+    # print (fname)
     if os.path.isfile(fname):
         res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
     else:
@@ -760,7 +761,7 @@ def run(exp, sf_bw=None, nNodes=None):
     #     node.packet.rectime for node in nodes
     # ))
 
-    print(send_time)
+    # print(send_time)
 
     return der, energy
 
