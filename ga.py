@@ -1,4 +1,5 @@
 import random
+from multiprocessing import Process, Queue
 from loraDir import run as runSim
 
 # MAXIMIZE, MINIMIZE = 1, 2
@@ -54,8 +55,21 @@ class Individual(object):
         der = []
         energy = []
 
+        process = []
+        data_q = Queue()
+
         for i in range(10):
-            x, y = runSim(4, self._get_sf_bw(), nodes)
+            p = Process(target=runSim, args=(4, self._get_sf_bw(), nodes, data_q))
+            process.append(p)
+            p.start()
+
+        for i in range(10):
+            process[i].join()
+
+            if data_q.empty():
+                raise Exception("Data queue empty")
+
+            x,y = data_q.get()
             der.append(x)
             energy.append(y)
 
@@ -185,5 +199,5 @@ class Environment(object):
         print("energy:     ", self.best.energy)
 
 nodes = 100
-env = Environment(Individual, optimum=0.99)
+env = Environment(Individual, optimum=1)
 env.run()

@@ -58,6 +58,7 @@ import math
 import sys
 import matplotlib.pyplot as plt
 import os
+import time
 
 # turn on/off graphics
 graphics = False
@@ -628,7 +629,7 @@ ymax = None
 ax = None
 
 
-def run(exp, sf_bw=None, nNodes=None):
+def run(exp, sf_bw=None, nNodes=None, queue=None):
     global env,send_time, packetsAtBS, nodes, nrNodes
     global nrCollisions, nrReceived, nrProcessed, nrLost
     global minsensi, Lpl, maxDist, experiment
@@ -763,7 +764,14 @@ def run(exp, sf_bw=None, nNodes=None):
 
     # print(send_time)
 
-    return der, energy
+    if queue:
+        while queue.full():
+            time.sleep(1e-3)
+
+        queue.put((der, energy))
+        return
+    else:
+        return der, energy
 
 if __name__ == "__main__":
     run(4, nNodes=100)
