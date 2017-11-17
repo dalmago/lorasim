@@ -1,4 +1,5 @@
 # LoRaSim
+> Modified version from http://www.lancaster.ac.uk/scc/sites/lora/lorasim.html
 LoRaSim consist of four Python scripts: loraDir.py, loraDirMulBs.py, directionalLoraIntf.py, and oneDirectionalLoraIntf.py.
 loraDir.py simulates a single base station, loraDirMulBs.py simulates more than one base station (up to 24), directionalLoraIntf simulates nodes with directional antennae and multiple networks, oneDirectionalLoraIntf.py simulates base stations with directional antennae and mulitple networks.
 All require the following packages: matplotlib, simpy and numpy.
