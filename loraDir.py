@@ -716,25 +716,25 @@ def run(exp, sf_bw=None, nNodes=None, queue=None):
     env.run(until=simtime)
 
     # print stats and save into file
-    print ("nrCollisions ", nrCollisions)
+    # print ("nrCollisions ", nrCollisions)
 
     # mA = 90    # current draw for TX = 17 dBm
     V = 3.0     # voltage XXX
     sent = sum(n.sent for n in nodes)
     energy = sum(node.packet.rectime * TX[int(node.packet.txpow)+2] * V * node.sent for node in nodes) / 1e6
 
-    print ("energy (in J): ", energy)
-    print ("sent packets: ", sent)
-    print ("collisions: ", nrCollisions)
-    print ("received packets: ", nrReceived)
-    print ("processed packets: ", nrProcessed)
-    print ("lost packets: ", nrLost)
+    # print ("energy (in J): ", energy)
+    # print ("sent packets: ", sent)
+    # print ("collisions: ", nrCollisions)
+    # print ("received packets: ", nrReceived)
+    # print ("processed packets: ", nrProcessed)
+    # print ("lost packets: ", nrLost)
 
     # data extraction rate
     der = (sent-nrCollisions)/float(sent)
-    print ("DER:", der)
+    # print ("DER:", der)
     der2 = (nrReceived)/float(sent)
-    print ("DER method 2:", der2)
+    # print ("DER method 2:", der2)
 
     # this can be done to keep graphics visible
     # if graphics:
@@ -742,15 +742,15 @@ def run(exp, sf_bw=None, nNodes=None, queue=None):
 
     # save experiment data into a dat file that can be read by e.g. gnuplot
     # name of file would be:  exp0.dat for experiment 0
-    fname = "exp" + str(exp) + ".dat"
+    # fname = "exp" + str(exp) + ".dat"
     # print (fname)
-    if os.path.isfile(fname):
-        res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
-    else:
-        res = "#nrNodes nrCollisions nrTransmissions OverallEnergy\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
-    with open(fname, "a") as myfile:
-        myfile.write(res)
-    myfile.close()
+    # if os.path.isfile(fname):
+    #     res = "\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
+    # else:
+    #     res = "#nrNodes nrCollisions nrTransmissions OverallEnergy\n" + str(nrNodes) + " " + str(nrCollisions) + " "  + str(sent) + " " + str(energy)
+    # with open(fname, "a") as myfile:
+    #     myfile.write(res)
+    # myfile.close()
 
     # with open('nodes.txt','w') as nfile:
     #     for n in nodes:

@@ -36,7 +36,7 @@ class Individual(object):
         chrom.extend(self.chromosome[2*length//3:])
 
         if random.random() < 0.1:
-            mutation_len = round(length*random.uniform(0, 0.1))
+            mutation_len = round(length*random.uniform(0, 0.5))
 
             for i in range(mutation_len):
                 index = random.randrange(0, length)
@@ -143,7 +143,7 @@ class Individual(object):
         return True
 
 class Environment(object):
-    def __init__(self, kind, population=None, size=100, maxgenerations=100,
+    def __init__(self, kind, population=None, size=300, maxgenerations=400,
                  generation=0, crossover_rate=0.90, mutation_rate=0.02,
                  optimum=None):
         self.kind = kind
@@ -197,6 +197,7 @@ class Environment(object):
         print("best:       ", self.best.score)
         print("der:        ", self.best.der)
         print("energy:     ", self.best.energy)
+        print("nodes       ", nodes)
 
 nodes = 100
 env = Environment(Individual, optimum=1)
