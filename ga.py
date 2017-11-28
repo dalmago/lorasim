@@ -31,22 +31,29 @@ class Individual(object):
 
         length = nodes*self.length
 
-        chrom = self.chromosome[:length//3]
-        chrom.extend(other.chromosome[length//3:2*length//3])
-        chrom.extend(self.chromosome[2*length//3:])
+        crossover_point_1 = random.randrange(0, length)
+        crossover_point_2 = random.randrange(crossover_point_1, length)
+
+        new_chromossome = self.chromosome[:crossover_point_1]
+        new_chromossome.extend(other.chromosome[crossover_point_1:crossover_point_2])
+        new_chromossome.extend(self.chromosome[crossover_point_2:])
+
+        # chrom = self.chromosome[:length//3]
+        # chrom.extend(other.chromosome[length//3:2*length//3])
+        # chrom.extend(self.chromosome[2*length//3:])
 
         if random.random() < 0.1:
-            mutation_len = round(length*random.uniform(0, 0.5))
+            mutation_len = round(length*random.uniform(0, 0.3))
 
             for i in range(mutation_len):
                 index = random.randrange(0, length)
-                chrom[index] ^= 1
+                new_chromossome[index] ^= 1
 
 
         # chrom = self.chromosome[:nodes*self.length//2]
         # chrom.extend(other.chromosome[nodes*self.length//2:])
 
-        ind = Individual(chromosome=chrom)
+        ind = Individual(chromosome=new_chromossome)
         ind.fitness()
 
         return ind
@@ -143,7 +150,7 @@ class Individual(object):
         return True
 
 class Environment(object):
-    def __init__(self, kind, population=None, size=300, maxgenerations=400,
+    def __init__(self, kind, population=None, size=300, maxgenerations=600,
                  generation=0, crossover_rate=0.90, mutation_rate=0.02,
                  optimum=None):
         self.kind = kind
@@ -165,6 +172,7 @@ class Environment(object):
         self.generation += 1
         self.population = self.population[:self.size // 2]
         self.bests = self.population[:]
+        random.shuffle(self.bests)
 
         for i in range(len(self.bests)//2):
             self.population.append(self.bests[i*2].crossover(self.bests[(i+1)*2 -1]))
@@ -199,6 +207,6 @@ class Environment(object):
         print("energy:     ", self.best.energy)
         print("nodes       ", nodes)
 
-nodes = 100
+nodes = 200
 env = Environment(Individual, optimum=1)
 env.run()
